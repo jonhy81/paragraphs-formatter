@@ -1,0 +1,7 @@
+name = Paragraphs Formatter
+description = Provide a customizable formater for paragraphs entity display.
+
+package = Paragraphs
+dependencies[] = paragraphs
+
+core = 7.x

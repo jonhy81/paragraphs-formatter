@@ -1,0 +1,290 @@
+<?php
+
+/**
+ * @file
+ * Holds relevant functions for paragraph formatter field formatters.
+ */
+
+/**
+ * Implements hook_field_formatter_info().
+ */
+function paragraphs_formatter_field_formatter_info() {
+  return array(
+    'paragraphs_extra' => array(
+      'label' => t('Paragraphs extra'),
+      'field types' => array('paragraphs'),
+      'settings' => array(
+        'bundles' => array(),
+        'sort' => FALSE,
+      ),
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_formatter_settings_form().
+ */
+function paragraphs_formatter_field_formatter_settings_form($field, $instance, $view_mode, $form, &$form_state) {
+  $display = $instance['display'][$view_mode];
+  $settings = $display['settings'];
+  $elements = array();
+
+  if ($display['type'] == 'paragraphs_extra') {
+
+    // Allowed bundles.
+    $options = array();
+    $data = array();
+    $bundles = paragraphs_bundle_load();
+
+    // Load values in the form.
+    foreach ($bundles as $bundle) {
+      if (array_key_exists($bundle->bundle, $settings['bundles']['elements'])) {
+        // Load defaults values.
+        $data[$bundle->bundle] = [
+          'enable' => $settings['bundles']['elements'][$bundle->bundle]['enabled'],
+          'default' => TRUE,
+          'weight' => $settings['bundles']['elements'][$bundle->bundle]['weight'],
+          'name' => $bundle->name,
+          'limit' => $settings['bundles']['elements'][$bundle->bundle]['limit'],
+          'view_mode' => $settings['bundles']['elements'][$bundle->bundle]['view_mode'],
+          'sort' => $settings['sort'],
+        ];
+      }
+      else {
+        // Load defaults values.
+        $data[$bundle->bundle] = [
+          'enable' => TRUE,
+          'default' => TRUE,
+          'weight' => 1,
+          'name' => $bundle->name,
+          'limit' => 1,
+          'view_mode' => 'full',
+          'sort' => FALSE,
+        ];
+      }
+    }
+
+    // Sort the rows.
+    uasort($data, '_better_tabledrag_example_form_weight_arraysort');
+
+    // View mode.
+    $entity_type = entity_get_info('paragraphs_item');
+    $options = array();
+    foreach ($entity_type['view modes'] as $mode => $info) {
+      $options[$mode] = $info['label'];
+    }
+
+    // Build the rows.
+    foreach ($data as $id => $entry) {
+      // Build the table rows.
+      $rows[$id] = array(
+        'data' => array(
+          // Cell for the cross drag&drop element.
+          array('class' => array('entry-cross')),
+          // Weight item for the tabledrag.
+          array(
+            'data' => array(
+              '#type' => 'weight',
+              '#title' => t('Weight'),
+              '#title_display' => 'invisible',
+              '#default_value' => $entry['weight'],
+              '#attributes' => array(
+                'class' => array('entry-order-weight'),
+              ),
+            ),
+          ),
+          // Enabled checkbox.
+          array(
+            'data' => array(
+              '#type' => 'checkbox',
+              '#title' => t('Enable'),
+              '#title_display' => 'invisible',
+              '#default_value' => $entry['enable'],
+            ),
+          ),
+          // Bundle name title.
+          array(
+            'data' => array(
+              '#markup' => $entry['name'],
+            ),
+          ),
+          // Limit by bundble textfield.
+          array(
+            'data' => array(
+              '#type' => 'textfield',
+              '#size' => 2,
+              '#title' => t('Limit'),
+              '#title_display' => 'invisible',
+              '#default_value' => $entry['limit'],
+            ),
+          ),
+          // View mode by bundble textfield.
+          array(
+            'data' => array(
+              '#type' => 'select',
+              '#title' => t('View mode'),
+              '#title_display' => 'invisible',
+              '#options' => $options,
+              '#default_value' => $entry['view_mode'],
+              '#description' => t('Select the view mode'),
+            ),
+          ),
+        ),
+        'class' => array('draggable'),
+      );
+      // Build rows of the form elements in the table.
+      $row_elements[$id] = array(
+        'weight' => &$rows[$id]['data'][1]['data'],
+        'enabled' => &$rows[$id]['data'][2]['data'],
+        'name' => &$rows[$id]['data'][3]['data'],
+        'limit' => &$rows[$id]['data'][4]['data'],
+        'view_mode' => &$rows[$id]['data'][5]['data'],
+      );
+    }
+
+    // Add the table to the form.
+    $elements['bundles'] = array(
+      '#theme' => 'table',
+      // The row form elements need to be processed and build,
+      // therefore pass them as element children.
+      'elements' => $row_elements,
+      '#header' => array(
+        // We need two empty columns for the weigth field and the cross.
+        array(
+          'data' => NULL,
+          'colspan' => 2,
+        ),
+        t('Enabled'),
+        t('Bundle'),
+        t('Limit'),
+        t('View mode'),
+      ),
+      '#rows' => $rows,
+      '#empty' => t('There are no entries available.'),
+      '#attributes' => array(
+        'id' => 'paragraphs-extra',
+      ),
+    );
+
+    drupal_add_tabledrag('paragraphs-extra', 'order', 'sibling', 'entry-order-weight');
+
+    $elements['sort'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Override original order of the paragraphs elements?'),
+      '#default_value' => $settings['sort'],
+    );
+
+  }
+
+  return $elements;
+}
+
+/**
+ * Implements hook_field_formatter_settings_summary().
+ */
+function paragraphs_formatter_field_formatter_settings_summary($field, $instance, $view_mode) {
+  $display = $instance['display'][$view_mode];
+  $settings = $display['settings'];
+  $output = array();
+
+  if ($display['type'] == 'paragraphs_extra') {
+
+    // Allowed bundles.
+    $settings_allowed_bundles = array_filter($settings['bundles']['elements']);
+    if (empty($settings_allowed_bundles)) {
+      $allowed_bundles = t("All");
+    }
+    else {
+      $bundles = paragraphs_bundle_load();
+      foreach ($settings_allowed_bundles as $bundle_id => $bundle) {
+        if ($bundle['enabled'] == 1) {
+          $allowed_bundles[] = $bundles[$bundle_id]->name . ': Showing ' . $bundle['limit'] . ' itens in ' . $bundle['view_mode'] . ' at position ' . $bundle['weight'] . '.';
+        }
+      }
+      $allowed_bundles = implode('<br> ', $allowed_bundles);
+    }
+
+    $output[] = t("Allowed bundles :<br><ul> !allowed_bundles </ul>", array('!allowed_bundles' => $allowed_bundles));
+
+    // Handle sort of elements.
+    if ($settings['sort']) {
+      $output[] = '<span class="error">' . t("NOTE: The original order of the paragraphs will be overrided by this settings.") . "</span>";
+    }
+
+  }
+
+  return implode('<br>', $output);
+}
+
+/**
+ * Implements hook_field_formatter_view().
+ */
+function paragraphs_formatter_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+  $element = array();
+  $settings = $instance['settings'];
+
+  switch ($display['type']) {
+    case 'paragraphs_extra':
+
+      // Prevent displaying useless markup if we don't have any values.
+      if (empty($items)) {
+        return $element;
+      }
+
+      $limit_count = array();
+
+      // Get view mode from entity.
+      $display_view_mode = empty($display['settings']['view_mode']) ? 'full' : $display['settings']['view_mode'];
+      // Get view mode from field instance (if configured).
+      $view_mode = empty($instance['display'][$display_view_mode]['settings']['view_mode']) ? $display_view_mode : $instance['display'][$display_view_mode]['settings']['view_mode'];
+      $element['#theme_wrappers'] = array('paragraphs_items');
+      $element['#attributes']['class'][] = drupal_clean_css_identifier('paragraphs-items');
+      $element['#attributes']['class'][] = drupal_clean_css_identifier('paragraphs-items-view-mode-' . $view_mode);
+      $element['#attributes']['class'][] = drupal_clean_css_identifier('paragraphs-items-field-' . $instance['field_name']);
+      $element['#view_mode'] = $view_mode;
+
+      // Get allowed bundle.
+      $settings_allowed_bundles = array_filter($display['settings']['bundles']['elements']);
+      if (empty($settings_allowed_bundles)) {
+        $bundles = paragraphs_bundle_load();
+        $allowed_bundles = array_keys($bundles);
+      }
+      else {
+        // Get paragraphs extra settings.
+        $pe_settings = $display['settings']['bundles']['elements'];
+        foreach ($pe_settings as $key => $setting) {
+          if ($setting['enabled'] == 1) {
+            $allowed_bundles[] = $key;
+            $limit_count[$key] = 0;
+          }
+        }
+      }
+
+      foreach ($items as $delta => $item) {
+
+        if ($paragraph = paragraphs_field_get_entity($item)) {
+
+          if (entity_access('view', 'paragraphs_item', $paragraph)) {
+
+            if (!in_array($paragraph->bundle, $allowed_bundles)) {
+              continue;
+            }
+
+            // Handle limit by bundle.
+            if ($pe_settings[$paragraph->bundle]['limit'] && $limit_count[$paragraph->bundle] < $pe_settings[$paragraph->bundle]['limit']) {
+              $element[$delta]['entity'] = $paragraph->view($pe_settings[$paragraph->bundle]['view_mode']);
+
+            }
+            $limit_count[$paragraph->bundle]++;
+
+          }
+        }
+      }
+
+      break;
+
+  }
+
+  return $element;
+
+}
