@@ -76,6 +76,8 @@ function paragraphs_formatter_field_formatter_settings_form($field, $instance, $
 
     // Build the rows.
     foreach ($data as $id => $entry) {
+
+      dsm($entry);
       // Build the table rows.
       $rows[$id] = array(
         'data' => array(
@@ -176,6 +178,8 @@ function paragraphs_formatter_field_formatter_settings_form($field, $instance, $
 
   }
 
+  dsm($data);
+
   return $elements;
 }
 
@@ -254,33 +258,48 @@ function paragraphs_formatter_field_formatter_view($entity_type, $entity, $field
         $pe_settings = $display['settings']['bundles']['elements'];
         foreach ($pe_settings as $key => $setting) {
           if ($setting['enabled'] == 1) {
-            $allowed_bundles[] = $key;
+
+            $allowed_bundles[$setting['weight']] = $key;
+
+            // Need to preserve the order decided in the settings field weight.
+            ksort($allowed_bundles);
+
             $limit_count[$key] = 0;
           }
         }
       }
 
-      foreach ($items as $delta => $item) {
+      foreach ($allowed_bundles as $sorted_bundle) {
 
-        if ($paragraph = paragraphs_field_get_entity($item)) {
+        foreach ($items as $delta => $item) {
 
-          if (entity_access('view', 'paragraphs_item', $paragraph)) {
+          if ($paragraph = paragraphs_field_get_entity($item)) {
 
-            if (!in_array($paragraph->bundle, $allowed_bundles)) {
-              continue;
+            if (entity_access('view', 'paragraphs_item', $paragraph)) {
+
+              if (!in_array($paragraph->bundle, $allowed_bundles)) {
+                continue;
+              }
+
+              // Respect the order of allowed bundle.
+              if ($display['settings']['sort']) {
+                if ($paragraph->bundle != $sorted_bundle) {
+                  continue;
+                }
+              }
+
+              // Handle limit by bundle.
+              if ($pe_settings[$paragraph->bundle]['limit'] && $limit_count[$paragraph->bundle] < $pe_settings[$paragraph->bundle]['limit']) {
+                $element[$delta]['entity'] = $paragraph->view($pe_settings[$paragraph->bundle]['view_mode']);
+
+              }
+              $limit_count[$paragraph->bundle]++;
+
             }
-
-            // Handle limit by bundle.
-            if ($pe_settings[$paragraph->bundle]['limit'] && $limit_count[$paragraph->bundle] < $pe_settings[$paragraph->bundle]['limit']) {
-              $element[$delta]['entity'] = $paragraph->view($pe_settings[$paragraph->bundle]['view_mode']);
-
-            }
-            $limit_count[$paragraph->bundle]++;
-
           }
         }
+      
       }
-
       break;
 
   }
