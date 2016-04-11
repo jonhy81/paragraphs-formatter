@@ -1,14 +1,15 @@
 # Paragraphs Formatter
 
-This project extends the Paragraphs module to add support for an extra
-formatter that allow to control the visibility, limit and position of
-the paragraphs bundles from the content type display management side.
+This module provides a customizable formmater to use with Paragraphs module.
+The project is available as sandbox module in the [Drupal.org](https://www.drupal.org/sandbox/jonhy81/2704031) 
+repository.
 
-## Installation instructions
+### Getting Started
 
-Standar installation for a drupal module.
+To use this module you should proceed to normal installation of a Drupal module.
+More information [here](https://www.drupal.org/documentation/install/modules-themes).
 
-## Dependencies
+### Notes
 
-The Drupal 7 version of Paragraphs Formatter requires the Paragraphs
-module..
+This project is built for Drupal 7 version only. If you need a D8 version please
+let me know.
