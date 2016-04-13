@@ -11,7 +11,8 @@
 function paragraphs_formatter_field_formatter_info() {
   return array(
     'paragraphs_extra' => array(
-      'label' => t('Paragraphs extra'),
+      'label' =>
+      t('Paragraphs extra')
       'field types' => array('paragraphs'),
       'settings' => array(
         'bundles' => array(),
@@ -227,7 +228,6 @@ function paragraphs_formatter_field_formatter_settings_summary($field, $instance
  */
 function paragraphs_formatter_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
   $element = array();
-  $settings = $instance['settings'];
 
   switch ($display['type']) {
     case 'paragraphs_extra':
