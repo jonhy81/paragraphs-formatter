@@ -13,5 +13,3 @@ More information [here](https://www.drupal.org/documentation/install/modules-the
 
 This project is built for Drupal 7 version only. If you need a D8 version please
 let me know.
-
-### To Review
